@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AI Investing — In Plain English</title>
+<style>html,body{margin:0;padding:0;background:#0D1816;min-height:100%;}</style>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo;
+var ICONS = {
+  "refresh-cw":'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+  "search":'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  "plus":'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  "layers":'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+  "target":'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  "chevron-down":'<path d="m6 9 6 6 6-6"/>',
+  "cpu":'<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+  "hard-drive":'<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
+  "network":'<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+  "snowflake":'<path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="m19.07 4.93-14.14 14.14"/><path d="M2 12h20"/>',
+  "building-2":'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  "zap":'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  "mountain":'<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>'
+};
+function Icon(props){
+  return React.createElement('svg', {
+    width: props.size || 20, height: props.size || 20, viewBox: '0 0 24 24',
+    fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+    className: props.className, style: props.style,
+    dangerouslySetInnerHTML: { __html: ICONS[props.name] || '' }
+  });
+}
+function mkIcon(name){ return function(p){ return React.createElement(Icon, Object.assign({name:name}, p)); }; }
+var RefreshCw=mkIcon("refresh-cw"), Search=mkIcon("search"), Plus=mkIcon("plus"),
+    Layers=mkIcon("layers"), Target=mkIcon("target"), ChevronDown=mkIcon("chevron-down"),
+    Cpu=mkIcon("cpu"), HardDrive=mkIcon("hard-drive"), Network=mkIcon("network"),
+    Snowflake=mkIcon("snowflake"), Building2=mkIcon("building-2"), Zap=mkIcon("zap"), Mountain=mkIcon("mountain");
+
+function MiniChart(props){
+  var data = props.data || [];
+  if (data.length < 2) return null;
+  var W=520,H=168,pl=48,pr=10,pt=10,pb=22;
+  var maxY = Math.max.apply(null, data.map(function(d){return d.total;})) * 1.08 || 1;
+  var n = data.length;
+  var idx = data.map(function(_,i){return i;});
+  function x(i){ return pl + (i/(n-1))*(W-pl-pr); }
+  function y(v){ return pt + (1 - v/maxY)*(H-pt-pb); }
+  var base = H-pb;
+  var contribTop = idx.map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var contribPath = 'M'+x(0)+' '+base+' L'+contribTop+' L'+x(n-1)+' '+base+' Z';
+  var topStr = idx.map(function(i){ return x(i)+' '+y(data[i].total); }).join(' L');
+  var botStr = idx.slice().reverse().map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var growthPath = 'M'+topStr+' L'+botStr+' Z';
+  return (
+    <svg viewBox={'0 0 '+W+' '+H} width="100%" height="168" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4F9C86" stopOpacity="0.5"/><stop offset="100%" stopColor="#4F9C86" stopOpacity="0.12"/></linearGradient>
+        <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#E7C878" stopOpacity="0.7"/><stop offset="100%" stopColor="#C6A24C" stopOpacity="0.15"/></linearGradient>
+      </defs>
+      {[0,0.5,1].map(function(f,k){ var v=maxY*f; return (
+        <g key={k}>
+          <line x1={pl} y1={y(v)} x2={W-pr} y2={y(v)} stroke="rgba(198,162,76,0.1)"/>
+          <text x={pl-6} y={y(v)+3} textAnchor="end" fontSize="10" fill="#8FA39A" fontFamily="monospace">{fmtK(v)}</text>
+        </g>); })}
+      <path d={contribPath} fill="url(#gC)" stroke="#4F9C86" strokeWidth="1.5"/>
+      <path d={growthPath} fill="url(#gG)" stroke="#E7C878" strokeWidth="1.5"/>
+      {idx.map(function(i){ if(i===0||i===n-1||i===Math.floor((n-1)/2)){ return (
+        <text key={i} x={x(i)} y={H-5} textAnchor="middle" fontSize="10" fill="#8FA39A">{data[i].year}y</text>); } return null; })}
+    </svg>
+  );
+}
+
+
+
+
+// ---------------------------------------------------------------------------
+// In Plain English — the AI investment categories as floors of one building.
+// Companion to the wealth plan and the Watchtower. Reference, not advice.
+// ---------------------------------------------------------------------------
+
+var STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&display=swap');
+.pe{--ink:#0D1816;--surface:#152220;--surface2:#1B2A27;--raise:#213330;--brass:#C6A24C;--brass-bright:#E7C878;
+  --verdigris:#4F9C86;--verdigris-soft:#79BBA8;--parchment:#ECE6D6;--muted:#8FA39A;--clay:#CE8351;--line:rgba(198,162,76,0.16);
+  background:var(--ink);color:var(--parchment);font-family:'Inter',system-ui,sans-serif;min-height:100%;padding:22px 16px 60px;-webkit-font-smoothing:antialiased;}
+.pe-wrap{max-width:760px;margin:0 auto;}
+.pe-ribbon{font-family:'Fraunces',Georgia,serif;font-style:italic;color:var(--brass-bright);font-size:15px;line-height:1.5;border-left:2px solid var(--brass);padding:3px 0 3px 14px;margin-bottom:20px;}
+.pe-ribbon span{color:var(--muted);font-size:12px;display:block;margin-top:4px;font-style:normal;font-family:'Inter';letter-spacing:1px;text-transform:uppercase;}
+.pe-eyebrow{font-family:'Saira Condensed';text-transform:uppercase;letter-spacing:3px;font-size:12px;color:var(--verdigris-soft);font-weight:600;}
+.pe-h1{font-family:'Saira Condensed';font-weight:700;font-size:38px;line-height:1;margin:4px 0 10px;}
+@media(max-width:720px){.pe-h1{font-size:31px;}}
+.pe-lede{color:var(--muted);font-size:14.5px;max-width:600px;margin-bottom:24px;line-height:1.55;}
+.pe-lede b{color:var(--parchment);}
+.pe-prim{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:640px){.pe-prim{grid-template-columns:1fr;}}
+.pe-p{background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--line);border-radius:11px;padding:15px 16px;}
+.pe-p.gold{border-color:var(--brass);}
+.pe-p .h{font-family:'Saira Condensed';font-weight:700;font-size:16px;letter-spacing:0.3px;margin-bottom:5px;}
+.pe-p.gold .h{color:var(--brass-bright);}
+.pe-p .b{font-size:12.5px;color:var(--muted);line-height:1.5;}
+.pe-p .b em{font-family:'Fraunces';font-style:italic;color:var(--verdigris-soft);}
+.pe-twoway{font-size:12.5px;color:var(--muted);line-height:1.55;}
+.pe-twoway b{color:var(--parchment);font-family:'Saira Condensed';font-weight:600;font-size:13.5px;}
+.pe-towerlbl{font-family:'Saira Condensed';font-weight:700;text-transform:uppercase;letter-spacing:2.5px;font-size:12px;color:var(--verdigris-soft);margin:26px 0 12px;}
+.pe-floor{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:9px;overflow:hidden;transition:border-color .15s;}
+.pe-floor.open{border-color:var(--brass);}
+.pe-head{display:flex;align-items:center;gap:13px;padding:15px 16px;cursor:pointer;user-select:none;}
+.pe-ic{width:40px;height:40px;border-radius:9px;background:var(--raise);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--brass-bright);}
+.pe-htxt{flex:1;min-width:0;}
+.pe-plain{font-family:'Saira Condensed';font-weight:700;font-size:19px;letter-spacing:0.3px;line-height:1.05;}
+.pe-plain span{color:var(--brass);}
+.pe-tech{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-top:2px;}
+.pe-chev{color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.pe-floor.open .pe-chev{transform:rotate(180deg);color:var(--brass);}
+.pe-body{padding:0 16px 16px 69px;}
+@media(max-width:640px){.pe-body{padding:0 16px 16px 16px;}}
+.pe-line{margin-bottom:11px;}
+.pe-line .k{font-family:'Saira Condensed';font-weight:600;text-transform:uppercase;letter-spacing:1.5px;font-size:10.5px;color:var(--verdigris-soft);margin-bottom:2px;}
+.pe-line .v{font-size:13.5px;color:var(--parchment);line-height:1.5;}
+.pe-line .v.ana{font-family:'Fraunces';font-style:italic;color:var(--brass-bright);font-size:14.5px;}
+.pe-names{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px;}
+.pe-chip{font-family:'Saira Condensed';font-weight:600;font-size:12px;letter-spacing:0.5px;padding:4px 9px;border-radius:6px;background:var(--raise);border:1px solid var(--line);color:var(--parchment);}
+.pe-chip b{color:var(--muted);font-weight:400;}
+.pe-base{text-align:center;font-size:11px;color:var(--muted);font-style:italic;margin-top:4px;padding:10px;border-top:1px dashed var(--line);}
+.pe-note{background:rgba(206,131,81,0.08);border:1px solid rgba(206,131,81,0.35);border-radius:11px;padding:15px 18px;margin-top:24px;font-size:13px;color:var(--parchment);line-height:1.55;}
+.pe-note b{color:var(--clay);}
+.pe-foot{margin-top:22px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px;}
+.pe-foot .v{font-family:'Fraunces';font-style:italic;color:var(--verdigris-soft);font-size:13px;margin-top:7px;}
+`;
+
+var FLOORS = [
+  {
+    icon: Cpu, plain: "The Chips", accent: "the engines", tech: "Compute & Silicon",
+    what: "The processors that do the actual AI thinking — billions of tiny calculations every second.",
+    ana: "The engine of a car. Everything else in the building exists to feed and cool this one thing.",
+    why: "No chips, no thinking. Full stop. It's the part everyone's fighting over.",
+    names: [["NVIDIA", "best engines"], ["TSMC", "builds them"], ["AMD", "the challenger"]],
+  },
+  {
+    icon: HardDrive, plain: "The Memory", accent: "the workbench", tech: "HBM · High-Bandwidth Memory",
+    what: "Ultra-fast memory that sits right beside the chip and feeds it data quick enough to keep up.",
+    ana: "The desk space next to a worker. A genius with no room to spread out still sits idle.",
+    why: "The fastest chip starves without fast memory beside it — and there are only three suppliers.",
+    names: [["Micron", "US supplier"]],
+  },
+  {
+    icon: Network, plain: "The Highways", accent: "the connections", tech: "Networking & Optical",
+    what: "The fiber-optic links that let thousands of chips talk to each other at the speed of light.",
+    ana: "Highways connecting thousands of workers so they act as one team, not a scattered crowd.",
+    why: "Without it you just own a warehouse of expensive parts that can't cooperate.",
+    names: [["Arista", "the fabric"], ["Coherent", "optics"], ["Lumentum", "optics"]],
+  },
+  {
+    icon: Snowflake, plain: "The Plumbing & A/C", accent: "power + cooling", tech: "Electrical & Cooling",
+    what: "Heavy-duty wiring to move all that electricity, and liquid cooling so the chips don't melt.",
+    ana: "A building's pipes and air-conditioning — invisible until the day they fail.",
+    why: "Modern AI racks run hot enough to cook. Liquid cooling isn't optional anymore.",
+    names: [["Vertiv", "cooling+power"], ["Eaton", "electrical"]],
+  },
+  {
+    icon: Building2, plain: "The Building Itself", accent: "your world", tech: "Data Centers · REITs",
+    what: "The physical warehouses that house all of it — and the landlords who own them.",
+    ana: "This is landlording, Pastor Taiwo — just renting to computers instead of people. Vera would know the game on sight.",
+    why: "Someone owns the buildings. A REIT lets you be that landlord and collect the rent.",
+    names: [["Digital Realty", "REIT"], ["Equinix", "REIT"]],
+  },
+  {
+    icon: Zap, plain: "The Power", accent: "the fuel", tech: "Power & Energy",
+    what: "The electricity that runs everything — staggering amounts of it.",
+    ana: "Food for a giant. A single big AI site can eat as much power as a small city.",
+    why: "If you can't get power, the whole thing is just a dark, empty building. This is the #1 bottleneck.",
+    names: [["Constellation", "nuclear"], ["GE Vernova", "gas turbines"], ["Vistra", "power"]],
+  },
+  {
+    icon: Mountain, plain: "The Raw Materials", accent: "the ingredients", tech: "Copper & Metals",
+    what: "The basic stuff it's all physically made of — above all, copper.",
+    ana: "Lumber and nails. You can't frame the house without them.",
+    why: "Every wire and every cooling plate is copper. More build-out means more copper pulled from the ground.",
+    names: [["Freeport", "copper miner"], ["COPX", "miner basket"]],
+  },
+];
+
+function App() {
+  var [open, setOpen] = useState({ 0: true });
+
+  useEffect(function () {
+    var el = document.createElement("style"); el.textContent = STYLES; document.head.appendChild(el);
+    return function () { document.head.removeChild(el); };
+  }, []);
+
+  function toggle(i) { setOpen(function (p) { var n = Object.assign({}, p); n[i] = !n[i]; return n; }); }
+
+  return (
+    <div className="pe">
+      <div className="pe-wrap">
+        <div className="pe-ribbon">
+          “By wisdom a house is built, and by understanding it is established; by knowledge the rooms are filled with all
+          precious and pleasant riches.”
+          <span>Proverbs 24:3–4</span>
+        </div>
+
+        <div className="pe-eyebrow">In Plain English</div>
+        <h1 className="pe-h1">AI investing, floor by floor.</h1>
+        <p className="pe-lede">
+          Picture AI as one enormous factory-building. Each way to invest is simply <b>one system of that building</b> —
+          the engines, the wiring, the power, the walls. You can own a piece of any floor. Tap one to open it.
+        </p>
+
+        <div className="pe-prim">
+          <div className="pe-p gold">
+            <div className="h">Start on the ground floor</div>
+            <div className="b">
+              An <b style={{ color: "var(--parchment)" }}>index fund</b> (VOO or VTI) is the whole stock market in a
+              single purchase — your steady base under everything above. Build here first; the AI floors go on top.
+            </div>
+          </div>
+          <div className="pe-p">
+            <div className="h">Two ways onto any floor</div>
+            <div className="pe-twoway">
+              <b>The basket (ETF):</b> one purchase spreads across many companies — softer landing if one stumbles.<br /><br />
+              <b>One company (stock):</b> you pick the winner — bigger upside, bigger sting if you're wrong.
+            </div>
+          </div>
+        </div>
+
+        <div className="pe-towerlbl">The seven floors ↓</div>
+
+        {FLOORS.map(function (f, i) {
+          var Icon = f.icon;
+          var isOpen = !!open[i];
+          return (
+            <div className={"pe-floor" + (isOpen ? " open" : "")} key={i}>
+              <div className="pe-head" onClick={function () { toggle(i); }}>
+                <div className="pe-ic"><Icon size={20} /></div>
+                <div className="pe-htxt">
+                  <div className="pe-plain">{f.plain} <span>— {f.accent}</span></div>
+                  <div className="pe-tech">{f.tech}</div>
+                </div>
+                <ChevronDown size={20} className="pe-chev" />
+              </div>
+              {isOpen && (
+                <div className="pe-body">
+                  <div className="pe-line"><div className="k">What it is</div><div className="v">{f.what}</div></div>
+                  <div className="pe-line"><div className="k">Think of it as</div><div className="v ana">{f.ana}</div></div>
+                  <div className="pe-line"><div className="k">Why AI can't live without it</div><div className="v">{f.why}</div></div>
+                  <div className="pe-line">
+                    <div className="k">Everyday names</div>
+                    <div className="pe-names">
+                      {f.names.map(function (nm) { return <span className="pe-chip" key={nm[0]}>{nm[0]} <b>· {nm[1]}</b></span>; })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <div className="pe-base">↑ the top floors get the headlines — but the bottom floors, power and materials, are the ground everything rests on</div>
+
+        <div className="pe-note">
+          <b>One honest word.</b> Understanding the floors makes you a smarter buyer — it doesn't make any of them safe.
+          Every floor can fall, hard. What protects you isn't knowing the categories; it's the plan: a steady core,
+          consistent monthly contributions, and sizing each bet so being wrong is survivable. This guide just makes sure
+          you always know exactly what you own.
+        </div>
+
+        <div className="pe-foot">
+          Educational reference, not investment advice or a recommendation of any security. Company names are examples of
+          each category, not a buy list.
+          <div className="v">By wisdom a house is built. — Proverbs 24:3</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
