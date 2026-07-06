@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>The Diligent Investor — AI Wealth Plan</title>
+<style>html,body{margin:0;padding:0;background:#0D1816;min-height:100%;}</style>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo;
+var ICONS = {
+  "refresh-cw":'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+  "search":'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  "plus":'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  "layers":'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+  "target":'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  "chevron-down":'<path d="m6 9 6 6 6-6"/>',
+  "cpu":'<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+  "hard-drive":'<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
+  "network":'<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+  "snowflake":'<path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="m19.07 4.93-14.14 14.14"/><path d="M2 12h20"/>',
+  "building-2":'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  "zap":'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  "mountain":'<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>'
+};
+function Icon(props){
+  return React.createElement('svg', {
+    width: props.size || 20, height: props.size || 20, viewBox: '0 0 24 24',
+    fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+    className: props.className, style: props.style,
+    dangerouslySetInnerHTML: { __html: ICONS[props.name] || '' }
+  });
+}
+function mkIcon(name){ return function(p){ return React.createElement(Icon, Object.assign({name:name}, p)); }; }
+var RefreshCw=mkIcon("refresh-cw"), Search=mkIcon("search"), Plus=mkIcon("plus"),
+    Layers=mkIcon("layers"), Target=mkIcon("target"), ChevronDown=mkIcon("chevron-down"),
+    Cpu=mkIcon("cpu"), HardDrive=mkIcon("hard-drive"), Network=mkIcon("network"),
+    Snowflake=mkIcon("snowflake"), Building2=mkIcon("building-2"), Zap=mkIcon("zap"), Mountain=mkIcon("mountain");
+
+function MiniChart(props){
+  var data = props.data || [];
+  if (data.length < 2) return null;
+  var W=520,H=168,pl=48,pr=10,pt=10,pb=22;
+  var maxY = Math.max.apply(null, data.map(function(d){return d.total;})) * 1.08 || 1;
+  var n = data.length;
+  var idx = data.map(function(_,i){return i;});
+  function x(i){ return pl + (i/(n-1))*(W-pl-pr); }
+  function y(v){ return pt + (1 - v/maxY)*(H-pt-pb); }
+  var base = H-pb;
+  var contribTop = idx.map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var contribPath = 'M'+x(0)+' '+base+' L'+contribTop+' L'+x(n-1)+' '+base+' Z';
+  var topStr = idx.map(function(i){ return x(i)+' '+y(data[i].total); }).join(' L');
+  var botStr = idx.slice().reverse().map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var growthPath = 'M'+topStr+' L'+botStr+' Z';
+  return (
+    <svg viewBox={'0 0 '+W+' '+H} width="100%" height="168" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4F9C86" stopOpacity="0.5"/><stop offset="100%" stopColor="#4F9C86" stopOpacity="0.12"/></linearGradient>
+        <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#E7C878" stopOpacity="0.7"/><stop offset="100%" stopColor="#C6A24C" stopOpacity="0.15"/></linearGradient>
+      </defs>
+      {[0,0.5,1].map(function(f,k){ var v=maxY*f; return (
+        <g key={k}>
+          <line x1={pl} y1={y(v)} x2={W-pr} y2={y(v)} stroke="rgba(198,162,76,0.1)"/>
+          <text x={pl-6} y={y(v)+3} textAnchor="end" fontSize="10" fill="#8FA39A" fontFamily="monospace">{fmtK(v)}</text>
+        </g>); })}
+      <path d={contribPath} fill="url(#gC)" stroke="#4F9C86" strokeWidth="1.5"/>
+      <path d={growthPath} fill="url(#gG)" stroke="#E7C878" strokeWidth="1.5"/>
+      {idx.map(function(i){ if(i===0||i===n-1||i===Math.floor((n-1)/2)){ return (
+        <text key={i} x={x(i)} y={H-5} textAnchor="middle" fontSize="10" fill="#8FA39A">{data[i].year}y</text>); } return null; })}
+    </svg>
+  );
+}
+
+
+
+
+// ---------------------------------------------------------------------------
+// The Diligent Investor — an AI-infrastructure wealth plan for Pastor Taiwo
+// Compounding projector + a satellite allocation map across the AI build-out.
+// Educational model. Illustrative, not a forecast or a recommendation.
+// ---------------------------------------------------------------------------
+
+var STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500;1,9..144,600&display=swap');
+
+.tdi-root{
+  --ink:#0D1816; --surface:#152220; --surface2:#1B2A27; --raise:#213330;
+  --brass:#C6A24C; --brass-bright:#E7C878; --verdigris:#4F9C86; --verdigris-soft:#79BBA8;
+  --parchment:#ECE6D6; --muted:#8FA39A; --clay:#CE8351; --line:rgba(198,162,76,0.16);
+  background:var(--ink); color:var(--parchment);
+  font-family:'Inter',system-ui,sans-serif; min-height:100%;
+  padding:22px 16px 60px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+.tdi-wrap{max-width:920px;margin:0 auto;}
+.tdi-ribbon{
+  font-family:'Fraunces',Georgia,serif; font-style:italic; font-weight:500;
+  color:var(--brass-bright); font-size:15px; letter-spacing:0.2px;
+  border-left:2px solid var(--brass); padding:2px 0 2px 14px; margin-bottom:20px;
+}
+.tdi-ribbon span{color:var(--muted);font-size:12.5px;display:block;margin-top:3px;font-style:normal;font-family:'Inter';letter-spacing:1px;text-transform:uppercase;}
+.tdi-eyebrow{font-family:'Saira Condensed';text-transform:uppercase;letter-spacing:3px;font-size:12px;color:var(--verdigris-soft);font-weight:600;}
+.tdi-h1{font-family:'Saira Condensed';font-weight:700;font-size:40px;line-height:0.98;letter-spacing:0.5px;margin:4px 0 8px;color:var(--parchment);}
+.tdi-lede{color:var(--muted);font-size:14.5px;max-width:640px;margin-bottom:26px;}
+.tdi-panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;}
+.tdi-grid{display:grid;grid-template-columns:0.92fr 1.08fr;gap:16px;align-items:stretch;}
+@media(max-width:720px){.tdi-grid{grid-template-columns:1fr;}.tdi-h1{font-size:33px;}}
+.tdi-ctl{margin-bottom:16px;}
+.tdi-ctl:last-child{margin-bottom:0;}
+.tdi-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--muted);margin-bottom:7px;font-weight:500;}
+.tdi-lbl b{font-family:'Saira Condensed';font-weight:600;color:var(--parchment);font-size:16px;letter-spacing:0.3px;}
+.tdi-num{width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:8px;color:var(--parchment);
+  padding:10px 12px;font-family:'Saira Condensed';font-size:19px;font-weight:600;letter-spacing:0.4px;outline:none;}
+.tdi-num:focus{border-color:var(--brass);}
+input[type=range].tdi-rng{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:4px;
+  background:linear-gradient(90deg,var(--verdigris),var(--brass));outline:none;margin:4px 0 2px;}
+input[type=range].tdi-rng::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--brass-bright);border:3px solid var(--ink);box-shadow:0 0 0 1px var(--brass);cursor:pointer;}
+input[type=range].tdi-rng::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--brass-bright);border:3px solid var(--ink);cursor:pointer;}
+.tdi-anchor{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-top:5px;letter-spacing:0.3px;}
+.tdi-seg{display:flex;gap:6px;flex-wrap:wrap;}
+.tdi-seg button{flex:1;min-width:52px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);
+  padding:9px 4px;border-radius:8px;font-family:'Saira Condensed';font-weight:600;font-size:15px;cursor:pointer;transition:all .15s;letter-spacing:0.4px;}
+.tdi-seg button.on{background:var(--brass);border-color:var(--brass);color:var(--ink);}
+.tdi-result{display:flex;flex-direction:column;justify-content:center;}
+.tdi-big{font-family:'Saira Condensed';font-weight:700;font-size:52px;line-height:1;color:var(--brass-bright);letter-spacing:0.5px;}
+@media(max-width:720px){.tdi-big{font-size:42px;}}
+.tdi-bigcap{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-family:'Saira Condensed';font-weight:600;margin-bottom:2px;}
+.tdi-split{display:flex;gap:18px;margin-top:16px;flex-wrap:wrap;}
+.tdi-split div{flex:1;min-width:120px;}
+.tdi-split .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:2px;}
+.tdi-split .v{font-family:'Saira Condensed';font-weight:600;font-size:22px;}
+.tdi-vg{color:var(--verdigris-soft);}
+.tdi-br{color:var(--brass);}
+.tdi-sect{margin-top:40px;}
+.tdi-sect-h{font-family:'Saira Condensed';font-weight:700;font-size:25px;letter-spacing:0.4px;margin-bottom:4px;}
+.tdi-sect-s{color:var(--muted);font-size:13.5px;margin-bottom:18px;max-width:660px;}
+.tdi-core{background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--brass);border-radius:12px;padding:16px 18px;margin-bottom:16px;}
+.tdi-core .lead{font-family:'Saira Condensed';font-weight:600;font-size:17px;color:var(--brass-bright);letter-spacing:0.3px;}
+.tdi-layers{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:720px){.tdi-layers{grid-template-columns:1fr;}}
+.tdi-layer{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 16px;position:relative;}
+.tdi-layer .tag{font-family:'Saira Condensed';font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--verdigris-soft);}
+.tdi-layer .nm{font-family:'Saira Condensed';font-weight:600;font-size:19px;margin:2px 0 6px;letter-spacing:0.3px;}
+.tdi-layer .bn{font-size:12.5px;color:var(--muted);margin-bottom:10px;}
+.tdi-layer .bn b{color:var(--clay);font-weight:600;}
+.tdi-tick{display:flex;flex-wrap:wrap;gap:5px;}
+.tdi-chip{font-family:'Saira Condensed';font-weight:600;font-size:12px;letter-spacing:0.6px;padding:3px 8px;border-radius:5px;background:var(--raise);color:var(--parchment);border:1px solid var(--line);}
+.tdi-chip.etf{background:rgba(198,162,76,0.14);border-color:var(--brass);color:var(--brass-bright);}
+.tdi-princ{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:720px){.tdi-princ{grid-template-columns:1fr;}}
+.tdi-p{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.tdi-p .n{font-family:'Saira Condensed';font-weight:700;color:var(--brass);font-size:13px;letter-spacing:2px;}
+.tdi-p .t{font-family:'Saira Condensed';font-weight:600;font-size:16px;margin:2px 0 5px;}
+.tdi-p .d{font-size:12.5px;color:var(--muted);}
+.tdi-risk{background:rgba(206,131,81,0.08);border:1px solid rgba(206,131,81,0.4);border-radius:12px;padding:18px 20px;margin-top:22px;}
+.tdi-risk h4{font-family:'Saira Condensed';font-weight:700;color:var(--clay);font-size:16px;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px;}
+.tdi-risk ul{margin:0;padding-left:18px;}
+.tdi-risk li{font-size:12.8px;color:var(--parchment);margin-bottom:6px;}
+.tdi-risk li b{color:var(--clay);}
+.tdi-foot{margin-top:26px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px;}
+.tdi-foot .v{font-family:'Fraunces';font-style:italic;color:var(--verdigris-soft);font-size:13px;margin-top:8px;}
+.tdi-tip{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:12px;}
+.tdi-tip .r{display:flex;justify-content:space-between;gap:12px;padding:2px 0;}
+.tdi-tip .r span:first-child{color:var(--muted);}
+`;
+
+var LAYERS = [
+  {
+    tag: "Layer 01",
+    nm: "Compute & Silicon",
+    bn: ["The accelerators. Chokepoint: ", "TSMC CoWoS advanced packaging sold out through 2026 — NVDA locked ~70% of it."],
+    etf: ["SMH", "SOXX"],
+    names: ["NVDA", "AMD", "TSM", "AVGO", "MRVL"],
+  },
+  {
+    tag: "Layer 02",
+    nm: "Memory · HBM",
+    bn: ["High-bandwidth memory. Chokepoint: ", "~70% of global memory output is being pulled into AI — a 3-supplier squeeze."],
+    etf: ["SMH"],
+    names: ["MU", "SK Hynix", "Samsung"],
+  },
+  {
+    tag: "Layer 03",
+    nm: "Power & Energy",
+    bn: ["The binding constraint. Chokepoint: ", "~49 GW projected US power shortfall by 2028. Nuclear + gas race to fill it."],
+    etf: ["XLU", "URA", "URNM"],
+    names: ["CEG", "VST", "GEV"],
+  },
+  {
+    tag: "Layer 04",
+    nm: "Electrical & Cooling",
+    bn: ["The plumbing. Chokepoint: ", "multi-year transformer backlogs; liquid cooling now mandatory at 120kW+ racks."],
+    etf: [],
+    names: ["VRT", "ETN", "NVT", "MOD", "Schneider"],
+  },
+  {
+    tag: "Layer 05",
+    nm: "Networking & Optical",
+    bn: ["The fabric. Chokepoint: ", "optical transceiver lead times stretched as AI clusters demand terabit interconnect."],
+    etf: [],
+    names: ["ANET", "COHR", "LITE", "FN", "APH", "ALAB"],
+  },
+  {
+    tag: "Layer 06",
+    nm: "Data Centers · REITs",
+    bn: ["The real estate. Chokepoint: ", "sub-3% vacancy; new leases pricing 30–50% above expiring in power-scarce markets."],
+    etf: ["DTCR", "SRVR"],
+    names: ["DLR", "EQIX"],
+  },
+  {
+    tag: "Layer 07",
+    nm: "Raw Materials",
+    bn: ["The inputs. Chokepoint: ", "copper intensity rising fast — busbars, cooling plates, the shift to 800V DC."],
+    etf: ["COPX"],
+    names: ["FCX"],
+  },
+];
+
+var PRINCIPLES = [
+  { n: "01", t: "Tax-advantaged first", d: "Capture every dollar of 401(k) match, then a Roth IRA / HSA, before a taxable thematic sleeve. The match is a guaranteed return no stock can promise." },
+  { n: "02", t: "Core, then satellite", d: "A broad-index core (e.g. VOO/VTI) carries the plan. The AI-infrastructure sleeve is the satellite — sized so it can fall hard without derailing you." },
+  { n: "03", t: "Automate the monthly", d: "The wealth is built by the contribution, not the pick. A fixed amount every month buys more when prices fall — you accumulate through the volatility." },
+  { n: "04", t: "Size for a 50% drawdown", d: "Thematic tech can halve. Set the satellite so that a 50% haircut is a bruise, not a wound — then you can hold instead of sell at the bottom." },
+];
+
+function fmt(n) {
+  return "$" + Math.round(n).toLocaleString("en-US");
+}
+function fmtK(n) {
+  if (n >= 1000000) return "$" + (n / 1000000).toFixed(n >= 10000000 ? 0 : 1) + "M";
+  if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+  return "$" + Math.round(n);
+}
+
+function project(start, monthly, years, ratePct) {
+  var rm = ratePct / 100 / 12;
+  var bal = start;
+  var contrib = start;
+  var data = [{ year: 0, contributed: start, growth: 0, total: start }];
+  for (var m = 1; m <= years * 12; m++) {
+    bal = bal * (1 + rm) + monthly;
+    contrib += monthly;
+    if (m % 12 === 0) {
+      data.push({
+        year: m / 12,
+        contributed: Math.round(contrib),
+        growth: Math.round(Math.max(0, bal - contrib)),
+        total: Math.round(bal),
+      });
+    }
+  }
+  return data;
+}
+
+function CustomTip(props) {
+  if (!props.active || !props.payload || !props.payload.length) return null;
+  var p = props.payload[0].payload;
+  return (
+    <div className="tdi-tip">
+      <div style={{ fontFamily: "Saira Condensed", fontWeight: 700, marginBottom: 4, letterSpacing: "0.5px" }}>
+        Year {p.year}
+      </div>
+      <div className="r"><span>You contributed</span><span className="tdi-vg" style={{ fontFamily: "Saira Condensed", fontWeight: 600 }}>{fmt(p.contributed)}</span></div>
+      <div className="r"><span>Compounding growth</span><span className="tdi-br" style={{ fontFamily: "Saira Condensed", fontWeight: 600 }}>{fmt(p.growth)}</span></div>
+      <div className="r" style={{ borderTop: "1px solid var(--line)", marginTop: 3, paddingTop: 5 }}>
+        <span style={{ color: "var(--parchment)" }}>Total</span>
+        <span style={{ fontFamily: "Saira Condensed", fontWeight: 700, color: "var(--brass-bright)" }}>{fmt(p.total)}</span>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  var [start, setStart] = useState(5000);
+  var [monthly, setMonthly] = useState(600);
+  var [years, setYears] = useState(10);
+  var [rate, setRate] = useState(9);
+  var [sat, setSat] = useState(20);
+
+  useEffect(function () {
+    var el = document.createElement("style");
+    el.textContent = STYLES;
+    document.head.appendChild(el);
+    return function () { document.head.removeChild(el); };
+  }, []);
+
+  var data = useMemo(function () { return project(start, monthly, years, rate); }, [start, monthly, years, rate]);
+  var end = data[data.length - 1];
+  var contributed = end.contributed;
+  var growth = end.growth;
+
+  var scenarios = useMemo(function () {
+    return [6, 9, 12].map(function (r) {
+      var d = project(start, monthly, years, r);
+      return { r: r, total: d[d.length - 1].total };
+    });
+  }, [start, monthly, years]);
+
+  return (
+    <div className="tdi-root">
+      <div className="tdi-wrap">
+
+        <div className="tdi-ribbon">
+          “Wealth gained hastily will dwindle, but whoever gathers little by little will increase it.”
+          <span>Proverbs 13:11</span>
+        </div>
+
+        <div className="tdi-eyebrow">The Diligent Investor</div>
+        <h1 className="tdi-h1">Building wealth on what AI runs on.</h1>
+        <p className="tdi-lede">
+          Two moving parts. First, the engine of compounding — your monthly contribution, given time.
+          Second, a map of the AI build-out, turned into a satellite you add on top of a steady core.
+          Move the numbers. Watch what patience does.
+        </p>
+
+        {/* PROJECTOR */}
+        <div className="tdi-grid">
+          <div className="tdi-panel">
+            <div className="tdi-ctl">
+              <div className="tdi-lbl"><span>Starting amount</span><b>{fmt(start)}</b></div>
+              <input className="tdi-num" type="number" value={start} min={0} step={500}
+                onChange={function (e) { setStart(Math.max(0, Number(e.target.value) || 0)); }} />
+            </div>
+
+            <div className="tdi-ctl">
+              <div className="tdi-lbl"><span>Every month</span><b>{fmt(monthly)}</b></div>
+              <input className="tdi-rng" type="range" min={50} max={3000} step={50} value={monthly}
+                onChange={function (e) { setMonthly(Number(e.target.value)); }} />
+              <div className="tdi-anchor"><span>$50</span><span>$3,000</span></div>
+            </div>
+
+            <div className="tdi-ctl">
+              <div className="tdi-lbl"><span>Time horizon</span><b>{years} years</b></div>
+              <div className="tdi-seg">
+                {[5, 10, 15, 20, 25].map(function (y) {
+                  return (
+                    <button key={y} className={years === y ? "on" : ""} onClick={function () { setYears(y); }}>{y}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="tdi-ctl">
+              <div className="tdi-lbl"><span>Assumed annual return</span><b>{rate}%</b></div>
+              <input className="tdi-rng" type="range" min={3} max={15} step={0.5} value={rate}
+                onChange={function (e) { setRate(Number(e.target.value)); }} />
+              <div className="tdi-anchor"><span>3% · cautious</span><span>~7–10% · broad market</span><span>15%</span></div>
+            </div>
+
+            <div className="tdi-ctl">
+              <div className="tdi-lbl"><span>AI satellite weight</span><b>{sat}%</b></div>
+              <input className="tdi-rng" type="range" min={0} max={40} step={5} value={sat}
+                onChange={function (e) { setSat(Number(e.target.value)); }} />
+              <div className="tdi-anchor"><span>0% · all core</span><span>{100 - sat}% core / {sat}% AI</span><span>40%</span></div>
+            </div>
+          </div>
+
+          <div className="tdi-panel tdi-result">
+            <div className="tdi-bigcap">Projected in {years} years</div>
+            <div className="tdi-big">{fmt(end.total)}</div>
+            <div className="tdi-split">
+              <div><div className="k">You put in</div><div className="v tdi-vg">{fmt(contributed)}</div></div>
+              <div><div className="k">Compounding added</div><div className="v tdi-br">{fmt(growth)}</div></div>
+            </div>
+
+            <div style={{ height: 168, marginTop: 18, marginLeft: -8 }}>
+              <MiniChart data={data} />
+            </div>
+
+            <div style={{ display: "flex", gap: 16, marginTop: 14, flexWrap: "wrap" }}>
+              {scenarios.map(function (s) {
+                return (
+                  <div key={s.r} style={{ flex: 1, minWidth: 90 }}>
+                    <div style={{ fontSize: 10.5, color: "var(--muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                      {s.r === 6 ? "Cautious 6%" : s.r === 9 ? "Base 9%" : "Ambitious 12%"}
+                    </div>
+                    <div style={{ fontFamily: "Saira Condensed", fontWeight: 600, fontSize: 18, color: s.r === 12 ? "var(--brass-bright)" : "var(--parchment)" }}>
+                      {fmtK(s.total)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* THE STACK */}
+        <div className="tdi-sect">
+          <div className="tdi-sect-h">What AI needs to thrive</div>
+          <div className="tdi-sect-s">
+            Seven layers of the physical build-out. In a supply-constrained boom, the money accrues to whoever owns the
+            chokepoint. <b style={{ color: "var(--brass)" }}>Gold chips are ETFs</b> — one-click, diversified exposure to a layer.
+            The rest are representative companies to research, not a buy list.
+          </div>
+
+          <div className="tdi-core">
+            <div className="lead">The core comes first — VOO / VTI</div>
+            <div style={{ fontSize: 12.8, color: "var(--muted)", marginTop: 4 }}>
+              A broad-market index fund is the foundation the whole plan stands on. The AI layers below are the satellite you
+              build on top of it — not a replacement for it.
+            </div>
+          </div>
+
+          <div className="tdi-layers">
+            {LAYERS.map(function (L) {
+              return (
+                <div className="tdi-layer" key={L.nm}>
+                  <div className="tag">{L.tag}</div>
+                  <div className="nm">{L.nm}</div>
+                  <div className="bn">{L.bn[0]}<b>{L.bn[1]}</b></div>
+                  <div className="tdi-tick">
+                    {L.etf.map(function (t) { return <span key={t} className="tdi-chip etf">{t}</span>; })}
+                    {L.names.map(function (t) { return <span key={t} className="tdi-chip">{t}</span>; })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* PRINCIPLES */}
+        <div className="tdi-sect">
+          <div className="tdi-sect-h">The discipline that turns it into wealth</div>
+          <div className="tdi-sect-s">The research picks the horse. These four keep you in the saddle long enough to be paid.</div>
+          <div className="tdi-princ">
+            {PRINCIPLES.map(function (p) {
+              return (
+                <div className="tdi-p" key={p.n}>
+                  <div className="n">{p.n}</div>
+                  <div className="t">{p.t}</div>
+                  <div className="d">{p.d}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* RISK */}
+        <div className="tdi-risk">
+          <h4>Eyes open — the honest risks</h4>
+          <ul>
+            <li><b>The math is stretched.</b> J.P. Morgan estimates the AI industry needs ~$650B of new annual revenue just to earn 10% on what's being built — against $50–150B today. A gap the market is paying for in advance.</li>
+            <li><b>Chips age like phones, not buildings.</b> GPUs sit on 5–6yr depreciation schedules with a 2–3yr real economic life. If the market re-prices that, infrastructure names can fall 40–60%.</li>
+            <li><b>Circular financing.</b> In June 2026 the BIS flagged an AI-capex bust and circular financing among its top threats to financial stability. The fragility concentrates in debt-funded "neoclouds," less so the cash-funded hyperscalers.</li>
+            <li><b>Concentration.</b> AI capex drove ~74% of US GDP growth in early 2026 — so a pullback is a macro event, which is exactly why a diversified core matters.</li>
+          </ul>
+        </div>
+
+        <div className="tdi-foot">
+          This is an educational model, not investment advice, a forecast, or a recommendation of any security. Assumed returns are
+          illustrative inputs you choose — real markets don't deliver a smooth number, and thematic sleeves can lose value, including
+          permanently. You already bring CFA-level judgment to this; for a full plan tuned to your taxes and goals, a fee-only
+          fiduciary is worth an hour of your time.
+          <div className="v">Whatever you do, work at it with all your heart. — Colossians 3:23</div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
