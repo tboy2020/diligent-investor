@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>The Watchtower — AI Position Cockpit</title>
+<style>html,body{margin:0;padding:0;background:#0D1816;min-height:100%;}</style>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo;
+var ICONS = {
+  "refresh-cw":'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+  "search":'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  "plus":'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  "layers":'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+  "target":'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  "chevron-down":'<path d="m6 9 6 6 6-6"/>',
+  "cpu":'<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>',
+  "hard-drive":'<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
+  "network":'<rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/>',
+  "snowflake":'<path d="M12 2v20"/><path d="m4.93 4.93 14.14 14.14"/><path d="m19.07 4.93-14.14 14.14"/><path d="M2 12h20"/>',
+  "building-2":'<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+  "zap":'<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  "mountain":'<path d="m8 3 4 8 5-5 5 15H2L8 3z"/>'
+};
+function Icon(props){
+  return React.createElement('svg', {
+    width: props.size || 20, height: props.size || 20, viewBox: '0 0 24 24',
+    fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+    className: props.className, style: props.style,
+    dangerouslySetInnerHTML: { __html: ICONS[props.name] || '' }
+  });
+}
+function mkIcon(name){ return function(p){ return React.createElement(Icon, Object.assign({name:name}, p)); }; }
+var RefreshCw=mkIcon("refresh-cw"), Search=mkIcon("search"), Plus=mkIcon("plus"),
+    Layers=mkIcon("layers"), Target=mkIcon("target"), ChevronDown=mkIcon("chevron-down"),
+    Cpu=mkIcon("cpu"), HardDrive=mkIcon("hard-drive"), Network=mkIcon("network"),
+    Snowflake=mkIcon("snowflake"), Building2=mkIcon("building-2"), Zap=mkIcon("zap"), Mountain=mkIcon("mountain");
+
+function MiniChart(props){
+  var data = props.data || [];
+  if (data.length < 2) return null;
+  var W=520,H=168,pl=48,pr=10,pt=10,pb=22;
+  var maxY = Math.max.apply(null, data.map(function(d){return d.total;})) * 1.08 || 1;
+  var n = data.length;
+  var idx = data.map(function(_,i){return i;});
+  function x(i){ return pl + (i/(n-1))*(W-pl-pr); }
+  function y(v){ return pt + (1 - v/maxY)*(H-pt-pb); }
+  var base = H-pb;
+  var contribTop = idx.map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var contribPath = 'M'+x(0)+' '+base+' L'+contribTop+' L'+x(n-1)+' '+base+' Z';
+  var topStr = idx.map(function(i){ return x(i)+' '+y(data[i].total); }).join(' L');
+  var botStr = idx.slice().reverse().map(function(i){ return x(i)+' '+y(data[i].contributed); }).join(' L');
+  var growthPath = 'M'+topStr+' L'+botStr+' Z';
+  return (
+    <svg viewBox={'0 0 '+W+' '+H} width="100%" height="168" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="gC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#4F9C86" stopOpacity="0.5"/><stop offset="100%" stopColor="#4F9C86" stopOpacity="0.12"/></linearGradient>
+        <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#E7C878" stopOpacity="0.7"/><stop offset="100%" stopColor="#C6A24C" stopOpacity="0.15"/></linearGradient>
+      </defs>
+      {[0,0.5,1].map(function(f,k){ var v=maxY*f; return (
+        <g key={k}>
+          <line x1={pl} y1={y(v)} x2={W-pr} y2={y(v)} stroke="rgba(198,162,76,0.1)"/>
+          <text x={pl-6} y={y(v)+3} textAnchor="end" fontSize="10" fill="#8FA39A" fontFamily="monospace">{fmtK(v)}</text>
+        </g>); })}
+      <path d={contribPath} fill="url(#gC)" stroke="#4F9C86" strokeWidth="1.5"/>
+      <path d={growthPath} fill="url(#gG)" stroke="#E7C878" strokeWidth="1.5"/>
+      {idx.map(function(i){ if(i===0||i===n-1||i===Math.floor((n-1)/2)){ return (
+        <text key={i} x={x(i)} y={H-5} textAnchor="middle" fontSize="10" fill="#8FA39A">{data[i].year}y</text>); } return null; })}
+    </svg>
+  );
+}
+
+
+
+
+// ---------------------------------------------------------------------------
+// The Watchtower — AI-infrastructure position cockpit for Pastor Taiwo
+// 1) Live on-demand tracker (Claude + web search)   2) Thesis screener
+// 3) Staged-entry planner (average in, don't lump in)
+// Snapshots are approximate — verify before trading. Context, not advice.
+// ---------------------------------------------------------------------------
+
+var STYLES = `
+@import url('https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@1,9..144,400;1,9..144,500&family=JetBrains+Mono:wght@500;600&display=swap');
+.wt{--ink:#0D1816;--surface:#152220;--surface2:#1B2A27;--raise:#213330;--brass:#C6A24C;--brass-bright:#E7C878;
+  --verdigris:#4F9C86;--verdigris-soft:#79BBA8;--parchment:#ECE6D6;--muted:#8FA39A;--clay:#CE8351;--rose:#C96A6A;--line:rgba(198,162,76,0.16);
+  background:var(--ink);color:var(--parchment);font-family:'Inter',system-ui,sans-serif;min-height:100%;padding:22px 16px 60px;-webkit-font-smoothing:antialiased;}
+.wt-wrap{max-width:940px;margin:0 auto;}
+.wt-ribbon{font-family:'Fraunces',Georgia,serif;font-style:italic;color:var(--brass-bright);font-size:15px;border-left:2px solid var(--brass);padding:2px 0 2px 14px;margin-bottom:18px;}
+.wt-ribbon span{color:var(--muted);font-size:12px;display:block;margin-top:3px;font-style:normal;font-family:'Inter';letter-spacing:1px;text-transform:uppercase;}
+.wt-eyebrow{font-family:'Saira Condensed';text-transform:uppercase;letter-spacing:3px;font-size:12px;color:var(--verdigris-soft);font-weight:600;}
+.wt-h1{font-family:'Saira Condensed';font-weight:700;font-size:38px;line-height:1;margin:4px 0 8px;}
+@media(max-width:720px){.wt-h1{font-size:30px;}}
+.wt-lede{color:var(--muted);font-size:14px;max-width:640px;margin-bottom:16px;}
+.wt-flag{background:rgba(206,131,81,0.09);border:1px solid rgba(206,131,81,0.35);border-radius:9px;padding:9px 13px;font-size:11.5px;color:var(--parchment);margin-bottom:26px;}
+.wt-flag b{color:var(--clay);}
+.wt-sect{margin-top:34px;}
+.wt-sh{display:flex;align-items:center;gap:8px;font-family:'Saira Condensed';font-weight:700;font-size:23px;letter-spacing:0.4px;margin-bottom:3px;}
+.wt-sh svg{color:var(--brass);}
+.wt-ss{color:var(--muted);font-size:13px;margin-bottom:16px;max-width:660px;}
+.wt-ss em{font-family:'Fraunces';font-style:italic;color:var(--verdigris-soft);}
+.wt-btn{font-family:'Saira Condensed';font-weight:600;letter-spacing:0.5px;background:var(--brass);color:var(--ink);border:none;border-radius:8px;padding:9px 15px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s;}
+.wt-btn:hover{background:var(--brass-bright);}
+.wt-btn.ghost{background:transparent;border:1px solid var(--line);color:var(--parchment);}
+.wt-btn:disabled{opacity:.5;cursor:default;}
+.wt-laytag{font-family:'Saira Condensed';font-weight:700;text-transform:uppercase;letter-spacing:2px;font-size:12px;color:var(--verdigris-soft);margin:18px 0 8px;display:flex;align-items:center;gap:8px;}
+.wt-laytag:after{content:"";flex:1;height:1px;background:var(--line);}
+.wt-cards{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+@media(max-width:720px){.wt-cards{grid-template-columns:1fr;}}
+.wt-card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:13px 15px;}
+.wt-crow{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.wt-tick{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:17px;letter-spacing:0.5px;color:var(--parchment);}
+.wt-name{font-size:11px;color:var(--muted);margin-top:1px;}
+.wt-badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;}
+.wt-b{font-size:9.5px;font-family:'Saira Condensed';font-weight:600;letter-spacing:0.5px;padding:2px 6px;border-radius:4px;text-transform:uppercase;}
+.wt-b.etf{background:rgba(198,162,76,0.15);color:var(--brass-bright);}
+.wt-b.pure{background:rgba(79,156,134,0.15);color:var(--verdigris-soft);}
+.wt-b.choke{background:rgba(206,131,81,0.15);color:var(--clay);}
+.wt-thesis{font-size:11.5px;color:var(--muted);margin:8px 0 10px;line-height:1.45;}
+.wt-fetchrow{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.wt-mini{font-family:'Saira Condensed';font-weight:600;font-size:12px;background:transparent;border:1px solid var(--line);color:var(--verdigris-soft);border-radius:6px;padding:5px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+.wt-mini:hover{border-color:var(--brass);color:var(--brass-bright);}
+.wt-live{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;}
+.wt-price{display:flex;align-items:baseline;gap:8px;}
+.wt-px{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:22px;}
+.wt-chg{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;}
+.up{color:var(--verdigris-soft);} .down{color:var(--rose);}
+.wt-metric{display:flex;gap:16px;margin-top:6px;font-size:11px;}
+.wt-metric .k{color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-size:9.5px;}
+.wt-metric .v{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;}
+.rp{margin-top:11px;}
+.rp-lbl{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:4px;}
+.rp-track{position:relative;height:7px;border-radius:6px;background:linear-gradient(90deg,rgba(79,156,134,.55),rgba(198,162,76,.55));}
+.rp-mark{position:absolute;top:-4px;width:3px;height:15px;background:var(--parchment);border-radius:2px;box-shadow:0 0 0 2px var(--ink);}
+.rp-cap{font-size:9.5px;color:var(--muted);margin-top:5px;text-align:center;letter-spacing:0.3px;}
+.wt-as{font-size:9.5px;color:var(--muted);margin-top:8px;font-style:italic;}
+.wt-note{font-size:10.5px;color:var(--verdigris-soft);margin-top:3px;}
+.wt-err{font-size:11px;color:var(--rose);margin-top:8px;}
+.wt-in{background:var(--surface2);border:1px solid var(--line);border-radius:8px;color:var(--parchment);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;letter-spacing:0.5px;outline:none;width:100%;text-transform:uppercase;}
+.wt-in:focus{border-color:var(--brass);}
+.wt-inrow{display:flex;gap:8px;align-items:stretch;}
+.wt-inrow .wt-btn{white-space:nowrap;}
+.wt-result{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:15px 17px;margin-top:14px;border-left:3px solid var(--muted);}
+.wt-result.strong{border-left-color:var(--verdigris);}
+.wt-result.partial{border-left-color:var(--brass);}
+.wt-result.off{border-left-color:var(--rose);}
+.wt-verdict{font-family:'Saira Condensed';font-weight:700;font-size:16px;letter-spacing:0.5px;text-transform:uppercase;}
+.wt-verdict.strong{color:var(--verdigris-soft);} .wt-verdict.partial{color:var(--brass-bright);} .wt-verdict.off{color:var(--rose);}
+.wt-rmeta{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;}
+.wt-rthesis{font-size:12.5px;color:var(--parchment);line-height:1.5;}
+.wt-watch{margin-top:14px;}
+.wt-witem{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:7px;}
+.wt-witem .t{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;min-width:60px;}
+.wt-witem .l{font-size:11px;color:var(--muted);flex:1;}
+.wt-plan{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;}
+.wt-pgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+@media(max-width:720px){.wt-pgrid{grid-template-columns:1fr;}}
+.wt-plbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.wt-sel{width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--parchment);border-radius:8px;padding:10px 12px;font-family:'Saira Condensed';font-weight:600;font-size:15px;outline:none;}
+.wt-seg{display:flex;gap:5px;}
+.wt-seg button{flex:1;background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:9px 0;font-family:'Saira Condensed';font-weight:600;font-size:15px;cursor:pointer;}
+.wt-seg button.on{background:var(--brass);border-color:var(--brass);color:var(--ink);}
+.wt-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:14px;cursor:pointer;}
+.wt-toggle .dot{width:34px;height:19px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);position:relative;transition:.15s;}
+.wt-toggle .dot.on{background:var(--verdigris);}
+.wt-toggle .dot i{position:absolute;top:1.5px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--parchment);transition:.15s;}
+.wt-toggle .dot.on i{left:17px;}
+.wt-tranche{border-top:1px solid var(--line);padding-top:12px;}
+.wt-trow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(198,162,76,0.08);}
+.wt-trow .a{font-family:'Saira Condensed';font-weight:600;font-size:14px;}
+.wt-trow .b{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:15px;color:var(--brass-bright);}
+.wt-trow .c{font-size:10.5px;color:var(--muted);}
+.wt-foot{margin-top:30px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:15px;}
+.wt-foot .v{font-family:'Fraunces';font-style:italic;color:var(--verdigris-soft);font-size:13px;margin-top:8px;}
+.spin{animation:wtspin 1s linear infinite;} @keyframes wtspin{to{transform:rotate(360deg);}}
+`;
+
+var UNIVERSE = [
+  { t: "NVDA", n: "NVIDIA", layer: "Compute & Silicon", type: "stock", pure: true, choke: true, thesis: "The accelerator standard; controls the bulk of TSMC's advanced-packaging allocation." },
+  { t: "AMD", n: "Advanced Micro Devices", layer: "Compute & Silicon", type: "stock", pure: true, choke: false, thesis: "The credible #2 accelerator; MI-series gaining inference share." },
+  { t: "TSM", n: "Taiwan Semiconductor", layer: "Compute & Silicon", type: "stock", pure: false, choke: true, thesis: "Fabricates nearly every leading AI chip; CoWoS packaging is the true chokepoint." },
+  { t: "AVGO", n: "Broadcom", layer: "Compute & Silicon", type: "stock", pure: false, choke: true, thesis: "Custom-ASIC partner to hyperscalers designing their own silicon." },
+  { t: "SMH", n: "VanEck Semiconductor ETF", layer: "Compute & Silicon", type: "etf", pure: false, choke: false, thesis: "One-tap diversified exposure to the whole chip layer." },
+  { t: "MU", n: "Micron", layer: "Memory · HBM", type: "stock", pure: false, choke: true, thesis: "US HBM supplier in a 3-player oligopoly absorbing ~70% of memory output." },
+  { t: "CEG", n: "Constellation Energy", layer: "Power & Energy", type: "stock", pure: true, choke: true, thesis: "Largest US nuclear fleet; the Three Mile Island restart anchors AI power deals." },
+  { t: "VST", n: "Vistra", layer: "Power & Energy", type: "stock", pure: true, choke: false, thesis: "Independent power producer with nuclear + gas serving data-center load." },
+  { t: "GEV", n: "GE Vernova", layer: "Power & Energy", type: "stock", pure: false, choke: true, thesis: "Gas turbines — the fastest path to on-site power; multi-year backlog." },
+  { t: "URA", n: "Global X Uranium ETF", layer: "Power & Energy", type: "etf", pure: false, choke: false, thesis: "Nuclear-fuel-cycle exposure for the baseload-power thesis." },
+  { t: "VRT", n: "Vertiv", layer: "Electrical & Cooling", type: "stock", pure: true, choke: true, thesis: "Thermal + power for high-density racks; liquid cooling now mandatory." },
+  { t: "ETN", n: "Eaton", layer: "Electrical & Cooling", type: "stock", pure: false, choke: false, thesis: "Switchgear, busways, UPS — the electrical backbone of the hall." },
+  { t: "NVT", n: "nVent Electric", layer: "Electrical & Cooling", type: "stock", pure: false, choke: false, thesis: "Liquid-cooling distribution + high-density power units." },
+  { t: "MOD", n: "Modine", layer: "Electrical & Cooling", type: "stock", pure: true, choke: false, thesis: "Pivoting to pure-play data-center thermal; multi-year order book." },
+  { t: "ANET", n: "Arista Networks", layer: "Networking & Optical", type: "stock", pure: true, choke: true, thesis: "Leads AI-Ethernet fabric across hyperscaler clusters." },
+  { t: "COHR", n: "Coherent", layer: "Networking & Optical", type: "stock", pure: false, choke: false, thesis: "Optical transceivers shipping into every AI interconnect." },
+  { t: "LITE", n: "Lumentum", layer: "Networking & Optical", type: "stock", pure: false, choke: false, thesis: "High-speed optics; silicon-photonics work with NVIDIA." },
+  { t: "ALAB", n: "Astera Labs", layer: "Networking & Optical", type: "stock", pure: true, choke: false, thesis: "Connectivity silicon inside the rack — retimers, fabric switches." },
+  { t: "DLR", n: "Digital Realty", layer: "Data Centers · REITs", type: "stock", pure: true, choke: false, thesis: "Data-center REIT; leases re-pricing well above expiring rents." },
+  { t: "EQIX", n: "Equinix", layer: "Data Centers · REITs", type: "stock", pure: true, choke: false, thesis: "Interconnection-focused REIT with sticky recurring revenue." },
+  { t: "FCX", n: "Freeport-McMoRan", layer: "Raw Materials", type: "stock", pure: false, choke: false, thesis: "Copper — busbars, cooling plates, the 800V-DC shift." },
+  { t: "COPX", n: "Global X Copper Miners ETF", layer: "Raw Materials", type: "etf", pure: false, choke: false, thesis: "Diversified copper-miner exposure for the materials layer." },
+];
+
+var LAYER_ORDER = ["Compute & Silicon", "Memory · HBM", "Power & Energy", "Electrical & Cooling", "Networking & Optical", "Data Centers · REITs", "Raw Materials"];
+
+function money(n) { if (n == null || isNaN(n)) return "—"; return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+function pct(n) { if (n == null || isNaN(n)) return ""; return (n >= 0 ? "+" : "") + Number(n).toFixed(2) + "%"; }
+
+function parseJSON(text) {
+  if (!text) return null;
+  var clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  try { return JSON.parse(clean); } catch (e) {}
+  var s = clean.indexOf("{"), e = clean.lastIndexOf("}");
+  if (s >= 0 && e > s) { try { return JSON.parse(clean.slice(s, e + 1)); } catch (x) {} }
+  return null;
+}
+
+async function askClaude(prompt, useSearch) {
+  if (location.hostname.indexOf("claude") === -1 && location.hostname.indexOf("anthropic") === -1) { throw new Error("Live fetch runs inside the Claude app. This deployed copy shows the framework; open it in Claude for live data."); }
+  var body = { model: "claude-sonnet-4-6", max_tokens: 1000, messages: [{ role: "user", content: prompt }] };
+  if (useSearch) body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+  var res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  var data = await res.json();
+  return (data.content || []).filter(function (b) { return b.type === "text"; }).map(function (b) { return b.text; }).join("\n");
+}
+
+function App() {
+  var [live, setLive] = useState({});
+  var [scrTicker, setScrTicker] = useState("");
+  var [scrResult, setScrResult] = useState(null);
+  var [scrLoading, setScrLoading] = useState(false);
+  var [scrErr, setScrErr] = useState("");
+  var [watch, setWatch] = useState([]);
+  var [allLoading, setAllLoading] = useState(false);
+
+  var [planTicker, setPlanTicker] = useState("NVDA");
+  var [planTarget, setPlanTarget] = useState(3000);
+  var [planTranches, setPlanTranches] = useState(3);
+  var [planDip, setPlanDip] = useState(true);
+
+  useEffect(function () {
+    var el = document.createElement("style"); el.textContent = STYLES; document.head.appendChild(el);
+    return function () { document.head.removeChild(el); };
+  }, []);
+
+  function setOne(t, patch) {
+    setLive(function (prev) { var n = Object.assign({}, prev); n[t] = Object.assign({}, prev[t], patch); return n; });
+  }
+
+  async function fetchOne(t) {
+    setOne(t, { loading: true, error: "" });
+    try {
+      var txt = await askClaude(
+        "Use web search to find the latest available market data for US-listed security " + t +
+        ". Return ONLY a JSON object, no markdown or commentary: " +
+        '{"price":number,"changePct":number,"low52":number,"high52":number,"peFwd":number,"asOf":"date string","note":"max 10 words on recent trend"}. ' +
+        "Use most recent close if intraday is unavailable. Use null for anything unknown.", true);
+      var d = parseJSON(txt);
+      if (!d) { setOne(t, { loading: false, error: "Couldn't read the data — tap to retry." }); return; }
+      setOne(t, { loading: false, data: d, error: "" });
+    } catch (e) {
+      setOne(t, { loading: false, error: (e && e.message) ? e.message : "Fetch failed — retry." });
+    }
+  }
+
+  async function fetchAll() {
+    setAllLoading(true);
+    for (var i = 0; i < UNIVERSE.length; i++) { await fetchOne(UNIVERSE[i].t); }
+    setAllLoading(false);
+  }
+
+  async function runScreen() {
+    var t = scrTicker.trim().toUpperCase();
+    if (!t) return;
+    setScrLoading(true); setScrErr(""); setScrResult(null);
+    try {
+      var txt = await askClaude(
+        "Evaluate US-listed security " + t + " against an AI-infrastructure investment thesis — the physical build-out behind AI: " +
+        "compute/chips, HBM memory, power & energy, electrical & cooling, networking & optical, data-center REITs, raw materials. " +
+        "Use web search. Return ONLY JSON, no markdown: " +
+        '{"ticker":"' + t + '","name":"company name","layer":"best-fit layer or None","chokepoint":true or false,' +
+        '"pureplay":"Pure-play" or "Diversified","qualifies":"Strong fit" or "Partial fit" or "Off-thesis",' +
+        '"thesis":"max 25 words on why it fits or does not","price":number or null,"peFwd":number or null}.', true);
+      var d = parseJSON(txt);
+      if (!d) { setScrErr("Couldn't read that one — try again."); setScrLoading(false); return; }
+      setScrResult(d); setScrLoading(false);
+    } catch (e) { setScrErr((e && e.message) ? e.message : "Screen failed — retry."); setScrLoading(false); }
+  }
+
+  function addWatch(d) {
+    if (!d || watch.some(function (w) { return w.ticker === d.ticker; })) return;
+    setWatch(function (p) { return p.concat([d]); });
+  }
+
+  var planOptions = UNIVERSE.map(function (u) { return u.t; }).concat(
+    watch.map(function (w) { return w.ticker; }).filter(function (t) { return UNIVERSE.every(function (u) { return u.t !== t; }); })
+  );
+  var planLive = live[planTicker] && live[planTicker].data;
+  var perTranche = planTarget / planTranches;
+  var tranches = [];
+  for (var i = 0; i < planTranches; i++) {
+    var label = i === 0 ? "Open now" : planDip ? ("Add on −" + (i * 8) + "% dip") : ("Add in month " + (i + 1));
+    var trigPrice = planDip && planLive && planLive.price ? planLive.price * (1 - i * 0.08) : null;
+    var shares = trigPrice ? perTranche / trigPrice : (planLive && planLive.price ? perTranche / planLive.price : null);
+    tranches.push({ label: label, amount: perTranche, trigPrice: trigPrice, shares: shares });
+  }
+
+  function renderCard(u) {
+    var st = live[u.t] || {};
+    var d = st.data;
+    var pos = d && d.low52 != null && d.high52 != null && d.high52 > d.low52
+      ? Math.max(0, Math.min(1, (d.price - d.low52) / (d.high52 - d.low52))) : null;
+    return (
+      <div className="wt-card" key={u.t}>
+        <div className="wt-crow">
+          <div>
+            <div className="wt-tick">{u.t}</div>
+            <div className="wt-name">{u.n}</div>
+          </div>
+          <div className="wt-badges">
+            {u.type === "etf" && <span className="wt-b etf">ETF</span>}
+            {u.pure && u.type !== "etf" && <span className="wt-b pure">Pure-play</span>}
+            {u.choke && <span className="wt-b choke">Chokepoint</span>}
+          </div>
+        </div>
+        <div className="wt-thesis">{u.thesis}</div>
+        <div className="wt-fetchrow">
+          <button className="wt-mini" onClick={function () { fetchOne(u.t); }} disabled={st.loading}>
+            <RefreshCw size={12} className={st.loading ? "spin" : ""} />
+            {st.loading ? "Fetching" : d ? "Refresh" : "Fetch live"}
+          </button>
+          {d && d.asOf && <span className="wt-as">as of {d.asOf}</span>}
+        </div>
+        {st.error && <div className="wt-err">{st.error}</div>}
+        {d && (
+          <div className="wt-live">
+            <div className="wt-price">
+              <span className="wt-px">{money(d.price)}</span>
+              {d.changePct != null && <span className={"wt-chg " + (d.changePct >= 0 ? "up" : "down")}>{pct(d.changePct)}</span>}
+            </div>
+            <div className="wt-metric">
+              <div><div className="k">Fwd P/E</div><div className="v">{d.peFwd != null ? Number(d.peFwd).toFixed(1) : "—"}</div></div>
+              <div><div className="k">52-wk low</div><div className="v">{money(d.low52)}</div></div>
+              <div><div className="k">52-wk high</div><div className="v">{money(d.high52)}</div></div>
+            </div>
+            {pos != null && (
+              <div className="rp">
+                <div className="rp-lbl"><span>near low</span><span>near high</span></div>
+                <div className="rp-track"><div className="rp-mark" style={{ left: (pos * 100) + "%" }} /></div>
+                <div className="rp-cap">range position {Math.round(pos * 100)}% · low-in-range can be value or a warning — never buy on range alone</div>
+              </div>
+            )}
+            {d.note && <div className="wt-note">{d.note}</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="wt">
+      <div className="wt-wrap">
+        <div className="wt-ribbon">
+          “Know well the condition of your flocks, and give attention to your herds.”
+          <span>Proverbs 27:23</span>
+        </div>
+
+        <div className="wt-eyebrow">The Watchtower</div>
+        <h1 className="wt-h1">Know the condition of your holdings.</h1>
+        <p className="wt-lede">
+          The plan sets the pace; this is where you watch. Live snapshots, a thesis screener for any ticker you're
+          curious about, and a planner that stages your entries so you average in instead of betting on one day's price.
+        </p>
+        <div className="wt-flag">
+          <b>Read this once.</b> Prices are pulled on demand via web search — snapshots, not a live feed. Treat every
+          number as something to verify before you act. This is analytical context, not advice and not a buy/sell signal.
+        </div>
+
+        {/* TRACKER */}
+        <div className="wt-sect">
+          <div className="wt-sh"><Layers size={20} /> Live tracker</div>
+          <div className="wt-ss">The seven layers, name by name. Tap a card to pull its current price, multiple, and where it sits in its 52-week range.</div>
+          <button className="wt-btn" onClick={fetchAll} disabled={allLoading}>
+            <RefreshCw size={14} className={allLoading ? "spin" : ""} /> {allLoading ? "Fetching all…" : "Fetch all live"}
+          </button>
+          {LAYER_ORDER.map(function (layer) {
+            return (
+              <div key={layer}>
+                <div className="wt-laytag">{layer}</div>
+                <div className="wt-cards">
+                  {UNIVERSE.filter(function (u) { return u.layer === layer; }).map(renderCard)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* SCREENER */}
+        <div className="wt-sect">
+          <div className="wt-sh"><Search size={20} /> Thesis screener</div>
+          <div className="wt-ss">Type any ticker. It gets scored against the build-out thesis — which layer it fits, whether it owns a chokepoint, pure-play or diversified.</div>
+          <div className="wt-inrow">
+            <input className="wt-in" placeholder="e.g. PWR, SMCI, NBIS" value={scrTicker}
+              onChange={function (e) { setScrTicker(e.target.value); }}
+              onKeyDown={function (e) { if (e.key === "Enter") runScreen(); }} />
+            <button className="wt-btn" onClick={runScreen} disabled={scrLoading}>
+              {scrLoading ? <RefreshCw size={14} className="spin" /> : <Search size={14} />} {scrLoading ? "Testing" : "Test it"}
+            </button>
+          </div>
+          {scrErr && <div className="wt-err">{scrErr}</div>}
+          {scrResult && (
+            <div className={"wt-result " + (scrResult.qualifies === "Strong fit" ? "strong" : scrResult.qualifies === "Partial fit" ? "partial" : "off")}>
+              <div className="wt-crow">
+                <div>
+                  <div className="wt-tick">{scrResult.ticker}</div>
+                  <div className="wt-name">{scrResult.name}</div>
+                </div>
+                <div className={"wt-verdict " + (scrResult.qualifies === "Strong fit" ? "strong" : scrResult.qualifies === "Partial fit" ? "partial" : "off")}>
+                  {scrResult.qualifies}
+                </div>
+              </div>
+              <div className="wt-rmeta">
+                {scrResult.layer && scrResult.layer !== "None" && <span className="wt-b pure">{scrResult.layer}</span>}
+                {scrResult.chokepoint && <span className="wt-b choke">Chokepoint</span>}
+                {scrResult.pureplay && <span className="wt-b etf">{scrResult.pureplay}</span>}
+                {scrResult.peFwd != null && <span className="wt-b" style={{ background: "var(--raise)", color: "var(--parchment)" }}>Fwd P/E {Number(scrResult.peFwd).toFixed(1)}</span>}
+              </div>
+              <div className="wt-rthesis">{scrResult.thesis}</div>
+              {scrResult.qualifies !== "Off-thesis" && (
+                <button className="wt-mini" style={{ marginTop: 12 }} onClick={function () { addWatch(scrResult); }}>
+                  <Plus size={12} /> Add to watchlist
+                </button>
+              )}
+            </div>
+          )}
+          {watch.length > 0 && (
+            <div className="wt-watch">
+              <div className="wt-laytag">Watchlist</div>
+              {watch.map(function (w) {
+                return (
+                  <div className="wt-witem" key={w.ticker}>
+                    <span className="t">{w.ticker}</span>
+                    <span className="l">{w.layer} · {w.qualifies}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* PLANNER */}
+        <div className="wt-sect">
+          <div className="wt-sh"><Target size={20} /> Staged-entry planner</div>
+          <div className="wt-ss">Average in, don't lump in. <em>“Count the cost before you build.” — Luke 14:28.</em> Split a target position into tranches so no single day's price decides the whole thing.</div>
+          <div className="wt-plan">
+            <div className="wt-pgrid">
+              <div>
+                <div className="wt-plbl">Security</div>
+                <select className="wt-sel" value={planTicker} onChange={function (e) { setPlanTicker(e.target.value); }}>
+                  {planOptions.map(function (t) { return <option key={t} value={t}>{t}</option>; })}
+                </select>
+              </div>
+              <div>
+                <div className="wt-plbl">Target position</div>
+                <input className="wt-in" style={{ textTransform: "none" }} type="number" value={planTarget}
+                  onChange={function (e) { setPlanTarget(Math.max(0, Number(e.target.value) || 0)); }} />
+              </div>
+              <div>
+                <div className="wt-plbl">Tranches</div>
+                <div className="wt-seg">
+                  {[2, 3, 4, 5].map(function (n) {
+                    return <button key={n} className={planTranches === n ? "on" : ""} onClick={function () { setPlanTranches(n); }}>{n}</button>;
+                  })}
+                </div>
+              </div>
+            </div>
+            <div className="wt-toggle" onClick={function () { setPlanDip(!planDip); }}>
+              <span className={"dot" + (planDip ? " on" : "")}><i /></span>
+              Space adds on dips (−8% steps){planDip ? "" : " — off: space by month instead"}
+            </div>
+            {!planLive && (
+              <div className="wt-ss" style={{ marginBottom: 12 }}>
+                Tip: tap <b>Fetch live</b> on {planTicker} in the tracker to fill in share estimates and dip-trigger prices.
+              </div>
+            )}
+            <div className="wt-tranche">
+              {tranches.map(function (tr, idx) {
+                return (
+                  <div className="wt-trow" key={idx}>
+                    <div>
+                      <div className="a">{tr.label}</div>
+                      <div className="c">
+                        {tr.trigPrice ? "≈ " + money(tr.trigPrice) + " trigger · " : ""}
+                        {tr.shares ? "~" + tr.shares.toFixed(tr.shares < 10 ? 2 : 1) + " shares" : "share est. after live fetch"}
+                      </div>
+                    </div>
+                    <div className="b">{money(tr.amount)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="wt-foot">
+          On-demand snapshots via web search may be delayed or imperfect — confirm against your brokerage before any trade.
+          Nothing here is investment advice, a recommendation, or a signal; range position and multiples are context for
+          your own judgment. Staging entries reduces timing risk — it does not remove the risk that a thesis is simply wrong.
+          <div className="v">Whatever you do, work heartily. — Colossians 3:23</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
